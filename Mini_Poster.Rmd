@@ -1,0 +1,267 @@
+---
+title: "Mini_Poster"
+author: "Kapil Sahu"
+date: "10/9/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Title:  
+Analyzing Goodreads Dataset to gain interesting insights about factors impacting the popularity of Books
+
+### Dataset Description: 
+
+The data set used for analysis is collected from the Goodreads database(Goodreads API: https://goodreads.com/api) (https://www.kaggle.com/hoshi7/goodreads-analysis-and-recommending-books/data) and is available on Kaggle. It contains book title along with authors, language, ratings, reviews, size of book and ISBN.  A brief description of data available in it is below:
+
+### Columns Description:
+
+**bookID**: Contains the unique ID for each book/series
+**title**: contains the titles of the books
+**authors**: contains the author of the particular book
+**average_rating**: the average rating of the books, as decided by the users
+**ISBN**: ISBN(10) number, tells the information about a book - such as edition and publisher
+**ISBN 13**: The new format for ISBN, implemented in 2007. 13 digits
+**language_code**: Tells the language for the books
+**Num_pages**: Contains the number of pages for the book
+**Ratings_count**: Contains the number of ratings given for the book
+**text_reviews_count**: Has the count of reviews left by users
+
+
+```{r}
+dfb <- read.csv("C:\\Users\\kapil\\OneDrive\\Desktop\\IDMP\\books\\books.csv") 
+
+head(dfb,20) # Printing top 20 rows of dataset
+
+sapply(dfb, function(x) sum(is.na(x))) #To check Missing value count
+
+dups <-dfb[duplicated(dfb$bookID)|duplicated(dfb$bookID, fromLast=TRUE),]
+dups # finding duplicate values in bookID
+
+dfb1<-dfb
+
+dfb2<-dfb1[dfb1$title != "",] # Removed all books which have no title
+
+dups <-dfb2[duplicated(dfb2$bookID)|duplicated(dfb2$bookID, fromLast=TRUE),]
+dups # finding duplicate values of bookID in updated dfb2 
+
+sapply(dfb2, function(x) sum(is.na(x))) #No NA values now
+
+dfb2$authors <- gsub("-.*","",dfb2$authors) #Kept only primary author
+
+dfb2[, c(4,8)] <- sapply(dfb2[, c(4,8)], as.numeric)
+
+a<- table(dfb2$authors)
+
+```
+### Printed first 20 lines of dataset above.
+
+### Tidied Data:
+As mentioned along with code in the comments I have tidiesd the dataset by doing below tasks:
+1. Checked missing values
+2. Removed duplicate values
+3. Removed all books which have no title
+4. Kept only primary author to simplify the dataset analysis
+```{r}
+library(ggplot2)
+library(dplyr)
+library(scales)
+
+# Titles of top 10 most occuring books:
+df_title_top <- dfb2 %>% 
+  group_by(dfb2$title)  %>% 
+  summarise(count=n()) %>% arrange(desc(count)) %>% head(10) 
+
+names(df_title_top)[1] <- 'ttl'
+names(df_title_top)[2] <- 'frq'
+
+df_title_top$frq = as.numeric(df_title_top$frq)
+
+#Barplot showing most occuring books
+df_title_top %>%
+  ggplot(aes(x = frq, y = reorder(ttl,frq), fill = frq))+ 
+  geom_col()+
+  geom_text(aes(label = frq), hjust = -0.05)+
+  ggtitle("Most Occuring Books")+
+  xlab("Number Of Occurences")+
+  ylab("Book Title")+
+  labs(fill = "Frequency")+
+  coord_cartesian(xlim = c(0, 12))
+
+```
+```{r}
+```
+### Observation: 
+One Hundred Years Of Solitude' and 'Salem's Lot' have the most number of occurrences with the same name in the data.These books have come up in this database over and over again, with various publication editions.
+ 
+
+```{r}
+#Top 10 languages in which books are published
+df_lang <- dfb2 %>% group_by(dfb2$language_code) %>% 
+  summarise(count=n()) %>% arrange(desc(count)) %>% head(10)
+
+names(df_lang)[1] <- 'lang'
+names(df_lang)[2] <- 'frq'
+
+
+#barplot showing distribution of books for all languages
+df_lang %>%
+  ggplot(aes(x = frq, y =reorder(lang,frq), fill = frq ))+ 
+  geom_col() +
+  geom_text(aes(label = frq), size = 3, hjust =-0.05)+
+  ggtitle("Distribution of Books based on Language (Top 10)")+
+  xlab("Frequency")+
+  ylab("Language Code")+
+  labs(fill = "Frequency")
+```
+
+```{r}
+```
+### Observation: 
+Majority of the books are in english languages, with some further categorized into English-US, english-UK and english-CA. Then some are in Spanish, German and French.
+```{r}
+pdf("Output.pdf") # For miniposter
+
+#Top 10 most rated books
+df_rating <- dfb2 %>% arrange(desc(ratings_count)) %>% head(10)
+
+#Plotting top 10 most rated books
+df_rating %>%
+  ggplot(aes(x = ratings_count, 
+             y = reorder(title,ratings_count), fill = ratings_count))+ 
+  geom_col()+
+  geom_text(aes(label = ratings_count), size = 3, hjust =-0.05)+
+  ggtitle("Most Rated Books (Top 10)")+
+  ylab("Title")+
+  xlab("Rating Count")+
+  labs(fill = "Rating Count")+
+  coord_cartesian(xlim = c(0, 7000000)) 
+  
+dev.off() # for miniposter
+  
+```
+
+```{r}
+```
+### Analysis:
+Here we are looking at the top 10 books with the most reviews. The first book of any series usually has most of the ratings, i.e, Harry Potter and the Sorcerer’s Stone, Twilight #1, The Hobbit, Angels and Demons #1. However, A huge gap in ratings(approx. 50%) of Harry Potter(#1) and  Harry Potter(#2) indicates that fiction enthusiasts did not pick up the sequel in the series as much as they liked the first one. This is quite interesting as generally, people eagerly wait for a sequel of a book if the first part is a big hit and authors expect a positive response mostly. But this data tells otherwise. 
+```{r}
+#Authors with most books
+
+df_auth <- dfb2 %>% group_by(dfb2$authors) %>% 
+  summarise(count=n()) %>% arrange(desc(count)) %>% head(10)
+
+names(df_auth)[1] <- 'author'
+names(df_auth)[2] <- 'no_of_books'
+
+df_auth %>%
+  ggplot(aes(x= no_of_books, y = reorder(author,no_of_books), 
+             fill = no_of_books)) +
+  geom_col()+
+  geom_text(aes(label = no_of_books), size = 3, hjust =-0.05)+
+  ggtitle("Authors with Most Books (Top 10)")+
+  xlab("Number of Books")+
+  ylab("Author")+
+  labs(fill = "Number of Books")
+
+
+```
+
+```{r}
+```
+### Observation: 
+
+Stephen King is the author with with most books followed by William Shakespeare and Agatha Christie. Most of the authors have either been writing for decades, churning numerous books from time to time, or are authors who are known as the 'classics' in our history.
+
+```{r}
+#For Miniposter
+#Relationship between avg rating and review count: 
+
+df_avg_interval <- dfb2 
+df_avg_interval$average_rating = as.numeric(df_avg_interval$average_rating)
+
+df_avg_interval %>%
+  ggplot(aes(x= average_rating, y = text_reviews_count)) +
+  geom_point(color = "blue") + 
+  ggtitle("Relationship Between Avg. Rating and Review Count")+
+  xlab("Avg. Rating")+
+  ylab("Text Review Counts")+
+  scale_x_continuous(breaks=c(0,1,2,3,4,5))
+```
+
+```{r}
+```
+### Analysis Plot 1:
+
+It is a scatter plot from which we can infer that most of the ratings for the books seem to lie near 3-4, with a heavy number of reviews lying mostly near 5000, approx. Hence, we need to look closely at the area where the review count is below 5000 to get some insights.
+
+```{r}
+#For Miniposter
+#To get better resolution for rating < 5000
+
+df_avg_interval2 <- subset(df_avg_interval, 
+                           df_avg_interval$text_reviews_count < 5000) 
+
+df_avg_interval2 %>%
+  ggplot(aes(x= average_rating, y = text_reviews_count )) +
+  geom_point(color = "red") + 
+  ggtitle("Relationship Between Avg. Rating and Review Count (<5000))")+
+  xlab("Avg. Rating")+
+  ylab("Text Review Counts")+
+  scale_x_continuous(breaks=c(0,1,2,3,4,5))
+
+```
+
+```{r}
+```
+
+### Analysis Plot 2:
+
+This scatter plot is a kind of magnified version of plot 1 where we are looking at observations where the review count is less than 5000. Even after looking at a smaller scale, most text reviews for books still lie under 1000, making data results inconclusive. The reviews seem to be predominant amongst books with good ratings. Maybe this is pointing towards a possibility that these are all fake reviews. Fake reviews are usually posted to promote a product in the market and hence are not from genuine readers which is somewhat self-explanatory since most of the time, bibliophiles don't just rate a book, they also share their honest reviews no matter positive or negative to help the community grow.
+
+```{r}
+
+#Relationship between avg rating and number of pages:
+
+df_avg_rat_pages <- dfb2
+df_avg_rat_pages$average_rating = as.numeric(df_avg_rat_pages$average_rating)
+df_avg_rat_pages$X..num_pages = as.numeric(df_avg_rat_pages$X..num_pages)
+
+df_avg_rat_pages %>%
+  ggplot(aes(x= average_rating, y = X..num_pages)) +
+  geom_point(color= "orange") +
+  ggtitle("Relationship Between Avg. Rating and Page Count ")+
+  xlab("Avg. Rating")+
+  ylab("Page Count")+
+  scale_x_continuous(breaks=c(0,1,2,3,4,5))
+```
+
+```{r}
+```
+
+### Analysis Plot 1:
+
+This plot doesn't give that much of an accurate inference due to the massive presence of outliers for books above 1000 pages, for the maximum density is between 0-1000 pages.
+```{r}
+
+df_avg_rat_pages2 <- df_avg_rat_pages <- subset(df_avg_rat_pages, 
+                                          df_avg_rat_pages$X..num_pages < 1000) 
+
+df_avg_rat_pages2 %>%
+  ggplot(aes(x= average_rating, y = X..num_pages)) +
+  geom_point(color= "orange") + 
+  ggtitle("Relationship Between Avg. Rating and Page Count (<1000))")+
+  xlab("Avg. Rating")+
+  ylab("Page Count")+
+  scale_x_continuous(breaks=c(0,1,2,3,4,5))
+
+```
+
+```{r}
+```
+
+### Analysis Plot 2: 
+
+From the given plot, we can infer that the highest ratings ever given, usually are for books with the page range of 200-400, peaking near 250. Which could mean that most of the people seem to prefer books with a moderate amount of pages, and people are not that fond of thicker books.
