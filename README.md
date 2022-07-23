@@ -1,5 +1,5 @@
 # Goodreads_EDA_Miniposter
-Presenting interesting insights with plots base after performing Exploratory Data Analysis (EDA) on Goodreads popular books dataset.
+Presenting interesting insights with plots after performing Exploratory Data Analysis (EDA) on Goodreads popular books dataset.
 
 #### Plots are visible in the following files :
 
